@@ -1,0 +1,6 @@
+path: .
+train: images/train
+val:   images/val
+
+nc: 5
+names: ['E_1', 'E_2', 'E_3', 'E_4', 'Player']
