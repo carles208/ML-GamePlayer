@@ -170,9 +170,9 @@ class Scanner:
             output = {"detections": detections, "score":score}
             json_str = json.dumps(output, indent=2)
             
-            enviar_mensajes(conn, json_str)
+            #enviar_mensajes(conn, json_str)
 
 
-start_server()
+#start_server()
 scan = Scanner("Galaga", 0.001, True, MODEL_DIR, (728,1024))
 scan.startScanner()
