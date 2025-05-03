@@ -20,7 +20,8 @@ class Capturer:
         window.activate()
         if self.activateDelay:
             pyautogui.sleep(self.delay)
-        screenshot = pyautogui.screenshot(region=(window.left, window.top, window.width, window.height))
+        screenshot = pyautogui.screenshot(region=(window.left, window.top,
+                                                  window.width, window.height))
 
         self.captureBuffer = screenshot
 
@@ -34,3 +35,4 @@ class Capturer:
 
     def setWindow(self, windowName):
         self.windowName = windowName
+
