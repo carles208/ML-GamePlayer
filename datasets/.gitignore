@@ -1,0 +1,6 @@
+*.txt
+*.pt
+*.zip
+/images/*
+/labels/*
+/runs/*

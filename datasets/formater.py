@@ -7,7 +7,7 @@ import numpy as np
 SPRITES_DIR           = "sprites/"          # Carpeta con sprites PNG
 BACKGROUND_PATH       = "background.png"    # Imagen de fondo
 OUTPUT_DIR            = "."            # Salida en formato YOLO TXT (labels)
-NUM_IMAGES            = 200                  # Total de imágenes
+NUM_IMAGES            = 500                 # Total de imágenes
 TRAIN_RATIO           = 0.8                  # 80% train, 20% val
 IMAGES_PER_SPLIT      = int(NUM_IMAGES * TRAIN_RATIO)  # 160 train, 40 val
 MAX_SPRITES_PER_IMAGE = 30

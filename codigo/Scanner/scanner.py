@@ -4,14 +4,13 @@ from capture import Capturer
 import pytesseract
 import cv2 as cv
 import socket
-import threading
 import win32gui
 import json
 import numpy as np
 
 SEPARADOR = "<END>"
 
-MODEL_DIR = 'models/best.pt'
+MODEL_DIR = 'scanner/models/best12x100.pt'
 
 conn = None
 
@@ -31,20 +30,17 @@ def recibir_mensajes(conn):
             print(f"[Error recibiendo]: {e}")
             break
 
-def enviar_mensajes(conn, data):
-    while True:
-        try:
-            mensaje = json.dumps(data) + SEPARADOR
-            conn.sendall(mensaje.encode())
-        except Exception as e:
-            print(f"[Error enviando]: {e}")
+def enviar_mensajes(client, data):
+    try:
+        mensaje = json.dumps(data) + SEPARADOR
+        client.sendall(mensaje.encode())
+    except Exception as e:
+        print(f"[Error enviando]: {e}")
 
 def start_server(host="127.0.0.1", port=65432):
-    global conn
-    servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    servidor.bind((host, port))
-    servidor.listen(1)
-    conn, addr = servidor.accept()
+    global client
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect((host, port))
 
     # Debug
     #threading.Thread(target=recibir_mensajes, args=(conn,), daemon=True).start()
@@ -85,15 +81,22 @@ class Scanner:
     def __init__(self, windowName, delay, activateDelay, model, size):
         self.capturer = Capturer(windowName, delay, activateDelay)
         self.model = YOLO(model)
+        self.model.to('cuda')
         self.prev_crop  = None     # recorte anterior
         self.prev_score = ''       # score extraído anteriormente
+        self.i = 0
+        self.plot = False
+        self.results = []
+        self.times = []
+        self.framesStart = 50
+        self.frameEnd = 300
         x, y = size
         resize_window(windowName, x, y)
     
     def startScanner(self):
         while True:
             capture = self.capturer.captureIMG()
-
+            
             # Inferencia con YOLOv8
             analysis  = self.model.predict(capture, conf=0.40)
             res       = analysis[0]          # <-- aquí guardamos el Results, no la imagen
@@ -107,7 +110,7 @@ class Scanner:
 
             # Recuadro de texto
             x1_frac, x2_frac = 0.05, 0.26
-            y1_frac, y2_frac = 0.085, 0.12
+            y1_frac, y2_frac = 0.075, 0.097
 
             # 3. Convierte porcentajes a píxeles
             x1, x2 = int(x1_frac * w), int(x2_frac * w)
@@ -154,7 +157,7 @@ class Scanner:
             annotated = cv.cvtColor(annotated, cv.COLOR_RGB2BGR)
             cv.imshow('Detecciones YOLOv8', annotated)
             cv.waitKey(1)
-            
+
             # Prepara la lista de detecciones
             detections = []
             for i, (xcn, ycn, _, _) in enumerate(res.boxes.xywhn.cpu().numpy(), start=1):
@@ -169,10 +172,22 @@ class Scanner:
             # Empaqueta todo en un dict y vuelca a JSON
             output = {"detections": detections, "score":score}
             json_str = json.dumps(output, indent=2)
+
+            if self.plot:
+                self.i += 1
+                if self.i > self.framesStart:
+                    for conf in enumerate(res.boxes.conf.cpu().numpy(), start=1):
+                        self.results.append(conf[1])
+                    self.times.append(res.speed['inference'])
+                if self.i > self.frameEnd:
+                    with open("Plot.txt", 'w') as f:
+                        f.write('Conf. mean: ' + str(float(np.mean(self.results))) + '\n')
+                        f.write('Time mean: ' + str(float(np.mean(self.times))) + '\n')
+                    exit()
             
-            #enviar_mensajes(conn, json_str)
+            enviar_mensajes(client, json_str)
 
 
-#start_server()
+start_server()
 scan = Scanner("Galaga", 0.001, True, MODEL_DIR, (728,1024))
 scan.startScanner()
