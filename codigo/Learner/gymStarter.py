@@ -1,8 +1,7 @@
 from environment import GameEnvironment
 from stable_baselines3 import PPO
 
-env = GameEnvironment('127.0.0.1', 8008, 
-                      ['A', 'D', 'Ctrl'], 100)
+env = GameEnvironment('127.0.0.1', 8008, ['A', 'D', 'Ctrl'], 100)
 
 model = PPO('CnnPolicy', env, verbose=1)
 

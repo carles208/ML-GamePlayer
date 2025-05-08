@@ -10,7 +10,7 @@ import numpy as np
 
 SEPARADOR = "<END>"
 
-MODEL_DIR = 'scanner/models/best12x100.pt'
+MODEL_DIR = 'scanner/models/best11n75.pt'
 
 conn = None
 
