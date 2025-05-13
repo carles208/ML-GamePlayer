@@ -4,7 +4,7 @@ call conda deactivate
 call conda activate MLGamePlayer
 
 REM Lanzar el script del entorno Gym
-start python Learner/gymTesterInputs.py
+start python Learner/gymStarter.py
 
 timeout /t 1 > nul
 

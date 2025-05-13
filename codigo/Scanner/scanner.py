@@ -7,25 +7,22 @@ import socket
 import win32gui
 import json
 import numpy as np
+import threading
+import time
 
 SEPARADOR = "<END>"
 
 MODEL_DIR = 'scanner/models/best11n75.pt'
 
-conn = None
-
-def recibir_mensajes(conn):
-    buffer = ""
+def recibir_mensajes(client):
     while True:
         try:
-            data = conn.recv(1024).decode()
+            print("Esperando mensaje")
+            data = client.recv(1024).decode()
             if not data:
                 break
-            buffer += data
-            while SEPARADOR in buffer:
-                mensaje, buffer = buffer.split(SEPARADOR, 1)
-                json_data = json.loads(mensaje)
-                print(f"\n[JSON recibido] {json_data}")
+            print("Message received")
+            break
         except Exception as e:
             print(f"[Error recibiendo]: {e}")
             break
@@ -41,10 +38,6 @@ def start_server(host="127.0.0.1", port=65432):
     global client
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((host, port))
-
-    # Debug
-    #threading.Thread(target=recibir_mensajes, args=(conn,), daemon=True).start()
-    #enviar_mensajes(conn)
 
 def find_window_by_partial_title(partial_title: str):
     """
@@ -78,7 +71,7 @@ def resize_window(partial_title: str, width: int, height: int):
     win32gui.MoveWindow(hwnd, x, y, width, height, True)
 
 class Scanner:
-    def __init__(self, windowName, delay, activateDelay, model, size):
+    def __init__(self, windowName, delay, activateDelay, model, size, debug):
         self.capturer = Capturer(windowName, delay, activateDelay)
         self.model = YOLO(model)
         self.model.to('cuda')
@@ -86,6 +79,7 @@ class Scanner:
         self.prev_score = ''       # score extraído anteriormente
         self.i = 0
         self.plot = False
+        self.debug = debug
         self.results = []
         self.times = []
         self.framesStart = 50
@@ -95,6 +89,9 @@ class Scanner:
     
     def startScanner(self):
         while True:
+            global client
+            recibir_mensajes(client)
+
             capture = self.capturer.captureIMG()
             
             # Inferencia con YOLOv8
@@ -110,7 +107,7 @@ class Scanner:
 
             # Recuadro de texto
             x1_frac, x2_frac = 0.05, 0.26
-            y1_frac, y2_frac = 0.075, 0.097
+            y1_frac, y2_frac = 0.070, 0.102
 
             # 3. Convierte porcentajes a píxeles
             x1, x2 = int(x1_frac * w), int(x2_frac * w)
@@ -140,7 +137,7 @@ class Scanner:
 
                 # 5. OCR con Tesseract (sólo dígitos)
                 # 3) Configura Tesseract para que sólo detecte dígitos y trate todo como una línea
-                pytesseract.pytesseract.tesseract_cmd = 'C:\Program Files\Tesseract-OCR/tesseract.exe'  # your path may be different
+                pytesseract.pytesseract.tesseract_cmd = 'C:\Program Files\Tesseract-OCR\\tesseract.exe'  # your path may be different
                 custom_config = r'--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789'
 
                 # 4) Llama a Tesseract
@@ -152,11 +149,13 @@ class Scanner:
 
             # 6. Filtrar y mostrar sólo los números
             print("Score detectado:", score)
+            cv.imwrite("ImagenCrop.png", crop)
 
             # Mostrar con OpenCV
-            annotated = cv.cvtColor(annotated, cv.COLOR_RGB2BGR)
-            cv.imshow('Detecciones YOLOv8', annotated)
-            cv.waitKey(1)
+            if self.debug:
+                #annotated = cv.cvtColor(annotated, cv.COLOR_RGB2BGR)
+                cv.imshow('Detecciones YOLOv8', annotated)
+                cv.waitKey(1)
 
             # Prepara la lista de detecciones
             detections = []
@@ -168,6 +167,8 @@ class Scanner:
                     "class":    class_name,
                     "position": (float(xcn), float(ycn))
                 })
+
+            cv.imwrite("Capture.png", annotated)
 
             # Empaqueta todo en un dict y vuelca a JSON
             output = {"detections": detections, "score":score}
@@ -189,5 +190,5 @@ class Scanner:
 
 
 start_server()
-scan = Scanner("Galaga", 0.001, True, MODEL_DIR, (728,1024))
+scan = Scanner("Galaga", 0.001, True, MODEL_DIR, (728,1024), True)
 scan.startScanner()
