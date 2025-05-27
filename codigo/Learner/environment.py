@@ -2,6 +2,7 @@ import socket
 import json
 import gymnasium as gym
 import numpy as np
+import math
 from consoleController import Console
 
 SEPARETOR = "<END>"
@@ -9,12 +10,17 @@ SEPARETOR = "<END>"
 class GameEnvironment(gym.Env):
     def __init__(self, host, port, emulatorDir, gameName, buttons, maxEnemies):
         super().__init__()
+
         self.maxEnemies = maxEnemies
+        self.maxReward = 80
+        self.prev_score = 0
+        self.game_speed = 1.0
+        self.seen_player = False
 
         # Se incia el emulador
         self.console = Console(emulatorDir, gameName)
-        self.console._loadState("1")
-        self.console._pause_game()
+        self.console.load_state("1")
+        self.console.pause_game()
 
         # Se define el socket que se utilizará para comunicarse con el scanner
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -24,11 +30,7 @@ class GameEnvironment(gym.Env):
 
         # Espacio de salida de la red a partir de una lista de botones (0 representa no pulsar ninguno)
         self.buttons = buttons
-        self.action_space = gym.spaces.Discrete(len(buttons)+1)
-
-        self.prev_score = 0
-        self.game_speed = 1.0
-        self.seen_player = False
+        self.action_space = gym.spaces.MultiBinary(len(buttons))
 
         # Espacio de observaciones basado tamaño y posción de jugador y enemigos (hasta maxEnemies), 
         # y el score
@@ -69,7 +71,7 @@ class GameEnvironment(gym.Env):
                 "detections": [],
                 "score": "0"
             }
-            
+        
         detections = json_data['detections']
         score = json_data['score']
         if len(score) > 0:
@@ -99,6 +101,8 @@ class GameEnvironment(gym.Env):
         if score > self.prev_score:
             diff = score - self.prev_score
             self.prev_score = score
+        
+        print(score)
 
         return {
             "player_location": player_location,
@@ -106,27 +110,30 @@ class GameEnvironment(gym.Env):
         }, diff
 
     def _perform_action(self, action):
-        if action != 0:
-            self.console._send_input(self.buttons[action-1])
+        for i in range(len(action)):
+            if action[i] != 0:
+                self.console.send_input(self.buttons[i])
 
     def step(self, action):
         self._perform_action(action)
         obs, reward = self._get_obs_and_score()
+        reward /= self.maxReward
+        reward = np.clip(reward, -1, 1)
         done = obs['player_location'][0] == -1 and self.seen_player
         if done:
-            reward = -1000
+            reward = -1
         info = {}
         return obs, reward, done, False, info
 
     def _reset_game(self):
-        self.console._loadState("1")
-        self.console._pause_game()
+        self.console.load_state("1")
+        self.console.pause_game()
         self.prev_score = 0
         self.seen_player = False
 
     def reset(self, seed, options):
         self._reset_game()
-        self.console._unpause_game()
+        self.console.unpause_game()
         initial_obs, _ = self._get_obs_and_score()
         return initial_obs, {}
 

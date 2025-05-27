@@ -22,7 +22,7 @@ class Console():
         self._writeln('releaseQueue = {}')
         self._writeln('actionsQueue = {}')
         self._writeln('function pipeData() \
-        if (math.fmod(tonumber(s:frame_number()), 2) == 0) then \
+        if (math.fmod(tonumber(s:frame_number()), 5) == 0) then \
         for i=1,#releaseQueue do  \
         releaseQueue[i](); \
         releaseQueue[i] = nil;\
@@ -37,29 +37,29 @@ class Console():
         end; \
         end')
         self._writeln('emu.register_frame(pipeData, "data")')
-        threading.Thread(target=self.readln, args=(), daemon=True).start()
+        threading.Thread(target=self._readln, args=(), daemon=True).start()
     
-    def _send_input(self, input):
-        if input in inputDictionary:
-            tagField = inputDictionary[input]
-            self._writeln('table.insert(actionsQueue, ' + f'"manager.machine.ioport.ports[\'{tagField[0]}\'].fields[\'{tagField[1]}\']")')
-
-    def _change_speed(self, speed):
-        self._writeln(f'manager.machine.video.throttle_rate = {speed}')
+    def _readln(self):
+        while True:
+            self.process.stdout.readline()
 
     def _writeln(self, string):
         self.process.stdin.write(string.encode("utf-8") + b'\n')
         self.process.stdin.flush()
 
-    def _loadState(self, name):
-        self._writeln("manager.machine:load('"+ name +"')")
+    def send_input(self, input):
+        if input in inputDictionary:
+            tagField = inputDictionary[input]
+            self._writeln('table.insert(actionsQueue, ' + f'"manager.machine.ioport.ports[\'{tagField[0]}\'].fields[\'{tagField[1]}\']")')
 
-    def _pause_game(self):
+    def change_speed(self, speed):
+        self._writeln(f'manager.machine.video.throttle_rate = {speed}')
+
+    def load_state(self, name):
+        self._writeln(f"manager.machine:load('{name}')")
+
+    def pause_game(self):
         self._writeln("emu.pause()")
 
-    def _unpause_game(self):
-        self._writeln("emu.unpause()")
-
-    def readln(self):
-        while True:
-            self.process.stdout.readline()
+    def unpause_game(self):
+        self._writeln("emu.unpause()")    

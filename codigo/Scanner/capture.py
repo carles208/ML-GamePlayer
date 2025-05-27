@@ -17,7 +17,7 @@ class Capturer:
         if(window.isMinimized):
             window.restore()
         
-        window.activate()
+        #window.activate()
         if self.activateDelay:
             pyautogui.sleep(self.delay)
         screenshot = pyautogui.screenshot(region=(window.left, window.top,
@@ -35,4 +35,3 @@ class Capturer:
 
     def setWindow(self, windowName):
         self.windowName = windowName
-

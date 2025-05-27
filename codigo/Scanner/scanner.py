@@ -17,11 +17,9 @@ MODEL_DIR = 'scanner/models/best11n75.pt'
 def recibir_mensajes(client):
     while True:
         try:
-            print("Esperando mensaje")
             data = client.recv(1024).decode()
             if not data:
                 break
-            print("Message received")
             break
         except Exception as e:
             print(f"[Error recibiendo]: {e}")
@@ -107,7 +105,7 @@ class Scanner:
 
             # Recuadro de texto
             x1_frac, x2_frac = 0.05, 0.26
-            y1_frac, y2_frac = 0.070, 0.102
+            y1_frac, y2_frac = 0.080, 0.110
 
             # 3. Convierte porcentajes a píxeles
             x1, x2 = int(x1_frac * w), int(x2_frac * w)
@@ -165,10 +163,10 @@ class Scanner:
                 detections.append({
                     "id":       f"det_{i:03}",       # det_001, det_002, ...
                     "class":    class_name,
-                    "position": (float(xcn), float(ycn))
+                    "position": (round(float(xcn), ndigits=3), round(float(ycn), ndigits=3))
                 })
 
-            cv.imwrite("Capture.png", annotated)
+            #cv.imwrite("Capture.png", annotated)
 
             # Empaqueta todo en un dict y vuelca a JSON
             output = {"detections": detections, "score":score}
@@ -190,5 +188,5 @@ class Scanner:
 
 
 start_server()
-scan = Scanner("Galaga", 0.001, True, MODEL_DIR, (728,1024), True)
+scan = Scanner("Galaga", 0, False, MODEL_DIR, (728,1024), False)
 scan.startScanner()
